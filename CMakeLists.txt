@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.28)
 project (http_twitter)
 
 #//////////////////////////
-#asio
+# asio
 #//////////////////////////
 
 set(CMAKE_CXX_STANDARD 17)
@@ -23,41 +23,54 @@ if (MSVC)
   add_definitions(-D_CRT_NONSTDC_NO_DEPRECATE)
 endif()
 
+include_directories(${CMAKE_SOURCE_DIR}/ext/asio-1.30.2/asio/include)
+include_directories(${CMAKE_SOURCE_DIR}/ext/json-3.11.3/single_include)
+
 #//////////////////////////
-#openssl
+# link with libraries
+# lib_dep contains a cascade definition of all the libraries needed to link
 #//////////////////////////
 
-if (APPLE)
-  set(OPENSSL_ROOT_DIR ${OPENSSL_ROOT_DIR} /usr/local/Cellar/openssl@1.1/1.1.1h/)
-  set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libcrypto.dylib CACHE FILEPATH "" FORCE)
-  set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.dylib CACHE FILEPATH "" FORCE)
-endif()
+set(lib_dep ${lib_dep})
+
+#//////////////////////////
+# OpenSSL
+#//////////////////////////
 
 if (MSVC)
-  set(OPENSSL_ROOT_DIR G:/wx/ssl)
-  set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
-  set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libcrypto.lib)
-  set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.lib)
+  if (OPEN_SSL_SOURCE)
+    set(OPENSSL_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/openssl-3.0.5)
+    set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
+    set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/libcrypto.lib)
+    set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/libssl.lib)
+  else()
+    set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR})
+    message(STATUS "OpenSSL root folder from environment, (OPENSSL_ROOT_DIR): ${OPENSSL_ROOT_DIR}")
+  endif()
 endif()
 
-if(UNIX AND NOT APPLE)
-  find_package(OpenSSL REQUIRED)
+find_package(OpenSSL REQUIRED)
+
+message(STATUS "OpenSSL root: ${OPENSSL_ROOT_DIR}")
+message(STATUS "OpenSSL include: ${OPENSSL_INCLUDE_DIR}")
+message(STATUS "OpenSSL libs: ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY}")
+
+if(UNIX)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif()
 
 include_directories(${OPENSSL_INCLUDE_DIR})
 
-include_directories(asio-1.22.2/include)
-include_directories(json-3.10.5/single_include)
+set(lib_dep ${lib_dep} ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
+if (MSVC)
+  set(lib_dep ${lib_dep} crypt32.lib ws2_32.lib wsock32.lib)
+endif()
 
 set(src ${src})
-set(src ${src} ssl_read.hh)
-set(src ${src} ssl_read.cc)
-set(src ${src} http_twitter.cc)
+set(src ${src} src/ssl_read.hh)
+set(src ${src} src/ssl_read.cc)
+set(src ${src} src/twitter.cc)
+set(src ${src} src/twitter.hh)
 
-add_executable(http_twitter ${src} http_twitter.cc)
-
-if (MSVC)
-  target_link_libraries (http_twitter ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY} CRYPT32.LIB)
-else()
-  target_link_libraries (http_twitter ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
-endif()
+add_executable(http_twitter src/http_twitter.cc ${src})
+target_link_libraries (http_twitter ${lib_dep})

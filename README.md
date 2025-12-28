@@ -41,6 +41,22 @@ OpenSSL
 asio
 nlohmann/json
 
+### Ubuntu dependencies
+
+```
+sudo apt update
+sudo apt-get install nlohmann-json3-dev
+sudo apt-get install libssl-dev
+sudo apt-get install cmake
+sudo apt-get install libasio-dev
+```
+
+### MacOS dependencies
+
+```
+brew install nlohmann-json
+```
+
 
 input encoded
 
